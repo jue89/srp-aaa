@@ -1,0 +1,12 @@
+{
+  "name":    "aaa",
+  "version": "0.0.1",
+  "author":  "Juergen Fitschen <me@jue.yt>",
+  "license": "MIT",
+  "scripts": {
+    "start":   "node index.js"
+  },
+  "dependencies": {
+  }
+}
+

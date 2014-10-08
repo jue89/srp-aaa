@@ -1,0 +1,6 @@
+{
+	"urls": [ "https://api.13pm.eu/v1.0/" ],
+	"ca": "cacert.pem",
+	"user": "admin",
+	"password": "password"
+}
