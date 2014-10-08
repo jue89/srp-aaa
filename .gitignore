@@ -1,2 +1,5 @@
+config/local.json
+config/*.pem
 node_modules
 *.log
+.*
