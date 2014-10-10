@@ -7,7 +7,6 @@ var mqtt = require( 'mqtt' );
 var ctrl = require( './lib/ctrl.js' );
 
 var fastd;
-var fastdExit = false;
 
 var cacheDir = path.resolve( __dirname, 'cache' );
 var confFile = cacheDir + '/fastd.conf';
@@ -22,9 +21,47 @@ Fastd.prototype = {
 	start: function( config ) {
 		var self = this;
 
+		// Preparations for starting FASTD
+		self.genConfig( config );
+
+		// Spawn FASTD
+		fastd = spawn( 'fastd', [
+			'--config', confFile
+		] );
+		fastd.stderr.pipe( errFile );
+		fastd.on( 'exit', function() {
+			console.log( "FASTD: Errors occured and fastd stopped. Confirm the log file cache/fastd.log" );
+			fastd = null;
+			errFile.end();
+		} );
+		console.log( "FASTD: Spwaned fastd." );
+
+		// Give FASTD some time to start
+		setTimeout( function() { self.fetchPeers( config ); }, 500 );
+	},
+
+	// Stops FASTD
+	stop: function( done ) {
+		if( ! fastd ) return done();
+
+		// Setup exit event
+		fastd.removeAllListeners( 'exit' );
+		fastd.on( 'exit', function() {
+			console.log( "FASTD: Stopped." );
+			fastd = null;
+			errFile.end();
+			done();
+		} );
+		
+		// Send SIGTERM to fastd
+		fastd.kill();
+	},
+
+	// Config generation
+	genConfig: function( config ) {
 		// Clear all existing peers
 		fs.readdirSync( peerPath ).forEach( function( f ) {
-			fs.unlinkSync( peerPath + '/' + f );
+			if( ! f[0] == "." ) fs.unlinkSync( peerPath + '/' + f );
 		} );
 		console.log( "FASTD: Cleaned peer directory." );
 
@@ -41,63 +78,56 @@ Fastd.prototype = {
 			+'include peers from "fastd-peers";\n'
 			+'log to stderr level debug2;\n'
 		);
-
-		// Spawn FASTD
-		fastd = spawn( 'fastd', [
-			'--config', confFile
-		] );
-		fastd.stderr.pipe( errFile );
-		fastd.on( 'exit', function() {
-			if( ! fastdExit ) console.log( "FASTD: Errors occured. Confirm the log file cache/fastd.log" );
-			console.log( "FASTD: Stopped." );
-			errFile.end();
-		} );
-		console.log( "FASTD: Spwaned fastd." );
-
-		// Give FASTD some time to start
-		setTimeout( function() {
-			// Start listener to MQTT
-			// TODO: Add auth
-			var mqttc = mqtt.createClient( config.mqtt.port, config.mqtt.host );
-			mqttc.subscribe( 'ap/+' );
-			mqttc.on( 'message', function( topic, message ) {
-				topic = topic.split('/');
-				if( topic[0] != "ap" ) return;
-				message = JSON.parse( message );
-				switch( topic[1] ) {
-					case 'add': self.addPeers( message ); break;
-					case 'remove': self.removePeers( message ); break;
-					case 'update': self.modifyPeers( message ); break;
-				}
-			} );
-
-			// Get all peers
-			ctrl.get( 'aps?fields=public_key&limit=0', function( err, res ) {
-				if( err ) throw err;
-
-				// Add all Aps
-				if( res.body.aps.length > 0 ) self.addPeers( res.body.aps );
-			} );
-		}, 500 );
 	},
 
-	// Stops FASTD
-	stop: function( done ) {
-		fastdExit = true;
+	// Peer source
+	fetchPeers: function( config ) {
+		var self = this;
 
-		// Setup exit event
-		fastd.on( 'exit', function() {
-			done();
+		// First: Start listener to MQTT
+		// TODO: Add auth
+		var mqttc = mqtt.createClient( config.mqtt.port, config.mqtt.host );
+		// When connected subscribe to topic ap.
+		mqttc.on( 'connect', function() {
+			console.log( "FASTD: Listening to peer updates." );
+			mqttc.subscribe( 'ap/+' );
 		} );
-		
-		// Send SIGTERM to fastd
-		fastd.kill();
+		// Arriving messages
+		mqttc.on( 'message', function( topic, message ) {
+			// Get sub-topic
+			topic = topic.split('/');
+
+			// Make sure it's an ap message
+			if( topic[0] != "ap" ) return;
+
+			// Parse message content from sting to object
+			message = JSON.parse( message );
+
+			// Interprete sub-topic and call function
+			switch( topic[1] ) {
+				case 'add': self.addPeers( message ); break;
+				case 'remove': self.removePeers( message ); break;
+				case 'update': self.modifyPeers( message ); break;
+			}
+		} );
+
+		// Then: Get all already existing peers
+		ctrl.get( 'aps?fields=public_key&limit=0', function( err, res ) {
+			if( err ) throw err;
+
+			// Add all Aps
+			if( res.body.aps.length > 0 ) self.addPeers( res.body.aps );
+		} );
+
 	},
 
 	// Adds peer
 	addPeers: function( peers, done ) {
+		// Skip when FASTD is down
+		if( ! fastd ) return;
+		
+		// When peers is no array change that ...
 		if( ! peers.length ) peers = [ peers ];
-		if( typeof done != "function" ) done = function() {};
 
 		// Iterate through all peers
 		async.each( peers, function( peer, done ) {
@@ -113,15 +143,19 @@ Fastd.prototype = {
 			)
 		}, function() {
 			// When done inform FASTD about newly added peers
-			if( fastd ) fastd.kill( 'SIGHUP' );
+			fastd.kill( 'SIGHUP' );
 			console.log( "FASTD: Reloaded peer directory." );
+			if( done ) done();
 		} );
 	},
 
 	// Removes peer
 	removePeers: function( peers, done ) {
+		// Skip when FASTD is down
+		if( ! fastd ) return;
+		
+		// When peers is no array change that ...
 		if( ! peers.length ) peers = [ peers ];
-		if( typeof done != "function" ) done = function() {};
 
 		// Iterate through all peers
 		async.each( peers, function( peer, done ) {
@@ -136,17 +170,15 @@ Fastd.prototype = {
 			)
 		}, function() {
 			// When done inform FASTD about newly added peers
-			if( fastd ) fastd.kill( 'SIGHUP' );
+			fastd.kill( 'SIGHUP' );
 			console.log( "FASTD: Reloaded peer directory." );
-			done();
+			if( done ) done();
 		} );
 
 	},
 
 	// Modifies peer
 	modifyPeers: function( peers, done ) {
-		if( typeof done != "function" ) done = function() {};
-
 		var self = this;
 		
 		// Modifying peers is just removing and adding peers ...
