@@ -1,0 +1,12 @@
+#!/bin/bash
+
+env >> /tmp/vars.nas
+
+QUERY="NAS_$1
+ip=$2
+
+"
+
+nc -q 2 localhost 2337 <<< "$QUERY"
+
+

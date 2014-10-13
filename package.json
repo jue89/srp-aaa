@@ -8,7 +8,8 @@
   },
   "dependencies": {
     "async": "0.9.x",
-    "mqtt": "0.3.x"
+    "mqtt": "0.3.x",
+    "handlebars": "2.0.x"
   }
 }
 

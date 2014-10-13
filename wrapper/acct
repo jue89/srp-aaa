@@ -1,0 +1,19 @@
+#!/bin/bash
+
+env >> /tmp/vars.acct
+echo >> /tmp/vars.acct
+
+#QUERY="ACCT
+#id=${USER_NAME//\"/}
+#
+#"
+#
+#RESPONSE="$(nc -q 2 localhost 2337 <<< "$QUERY")"
+#
+#while read LINE
+#do
+#	echo $LINE | grep -q -e '^[0-9]\+$' && exit $LINE
+#	echo $LINE
+#done <<< "$RESPONSE"
+#
+#exit 2
