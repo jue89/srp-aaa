@@ -3,17 +3,12 @@
 env >> /tmp/vars.auth
 echo >> /tmp/vars.auth
 
-#QUERY="ACCT
-#id=${USER_NAME//\"/}
-#
-#"
-#
-#RESPONSE="$(nc -q 2 localhost 2337 <<< "$QUERY")"
-#
-#while read LINE
-#do
-#	echo $LINE | grep -q -e '^[0-9]\+$' && exit $LINE
-#	echo $LINE
-#done <<< "$RESPONSE"
-#
-#exit 2
+QUERY="AUTH
+ap_id=${NAS_IDENTIFIER//\"/}
+user_id=${USER_NAME//\"/}
+ud_mac=${CALLING_STATION_ID//\"/}
+session=${ACCT_SESSION_ID//\"/}
+
+"
+
+nc -q 2 localhost 2337 <<< "$QUERY"

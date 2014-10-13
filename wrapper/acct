@@ -3,17 +3,33 @@
 env >> /tmp/vars.acct
 echo >> /tmp/vars.acct
 
-#QUERY="ACCT
-#id=${USER_NAME//\"/}
-#
-#"
-#
-#RESPONSE="$(nc -q 2 localhost 2337 <<< "$QUERY")"
-#
-#while read LINE
-#do
-#	echo $LINE | grep -q -e '^[0-9]\+$' && exit $LINE
-#	echo $LINE
-#done <<< "$RESPONSE"
-#
-#exit 2
+# Give other jobs the cache to get done
+sleep 1
+
+if [ "$ACCT_STATUS_TYPE" == "Start" ]
+then
+	QUERY="ACCT
+type=start
+ap_id=${NAS_IDENTIFIER//\"/}
+user_id=${USER_NAME//\"/}
+ud_mac=${CALLING_STATION_ID//\"/}
+session=${ACCT_SESSION_ID//\"/}
+
+"
+	nc -q 2 localhost 2337 <<< "$QUERY"
+fi
+
+if [ "$ACCT_STATUS_TYPE" == "Stop" ]
+then
+	QUERY="ACCT
+type=stop
+ap_id=${NAS_IDENTIFIER//\"/}
+user_id=${USER_NAME//\"/}
+ud_mac=${CALLING_STATION_ID//\"/}
+session=${ACCT_SESSION_ID//\"/}
+sent=${ACCT_OUTPUT_OCTETS//\"/}
+received=${ACCT_INPUT_OCTETS//\"/}
+
+"
+	nc -q 2 localhost 2337 <<< "$QUERY"
+fi
