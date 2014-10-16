@@ -3,9 +3,6 @@
 env >> /tmp/vars.acct
 echo >> /tmp/vars.acct
 
-# Give other jobs the cache to get done
-sleep 1
-
 if [ "$ACCT_STATUS_TYPE" == "Start" ]
 then
 	QUERY="ACCT

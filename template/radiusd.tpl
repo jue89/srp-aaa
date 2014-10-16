@@ -113,13 +113,13 @@ modules {
 
 	}
 	exec api-acct {
-		wait = no
+		wait = yes
 		program = "{{dir}}/wrapper/acct"
 		input_pairs = request
 		shell_escape = Yes
 	}
 	exec api-auth {
-		wait = no
+		wait = yes
 		program = "{{dir}}/wrapper/auth"
 		input_pairs = request
 		shell_escape = Yes

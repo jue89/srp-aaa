@@ -60,7 +60,7 @@ Bridge.prototype = {
 		
 		// TODO: Caching
 
-		ctrl.get( 'users/' + args.id + '?filter[enabled]=true&filter[confirmed]=true&fields=password', function( err, res ) {
+		ctrl.get( 'users/' + args.id + '?filter[enabled]=true&filter[confirmed]=true&filter[guest]=true&fields=password', function( err, res ) {
 			if( err ) {
 				if( err.message == 404 ) return c.end( '7\n' );
 				else                     return c.end( '2\n' );
@@ -75,6 +75,9 @@ Bridge.prototype = {
 
 	_auth: function( args, c ) {
 		console.log( "BRIDGE: User " + args.user_id + " has been successfully authenticated." );
+
+		// Close socket
+		c.end();
 
 		var mac = args.ud_mac.toLowerCase().replace( /-/g, ':' );
 		var user = args.user_id;
@@ -120,6 +123,9 @@ Bridge.prototype = {
 	},
 
 	_acct: function( args, c ) {
+		// Close socket
+		c.end();
+
 		var mac = args.ud_mac.toLowerCase().replace( /-/g, ':' );
 		var user = args.user_id;
 		var ap = args.ap_id;
@@ -127,6 +133,11 @@ Bridge.prototype = {
 		var session = helper.sessionID( args );
 
 		async.waterfall( [
+			function( done ) {
+				// Wait some time to ensure everything (like UD creation) has been finished.
+				// Kind of dirty, but it works
+				setTimeout( done, 1000 );
+			},
 			function( done ) {
 				// Ask cache
 				sessionCache.get( session, function( err, res ) {
