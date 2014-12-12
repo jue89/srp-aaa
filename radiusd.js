@@ -2,6 +2,7 @@ var spawn = require( 'child_process' ).spawn;
 var path = require( 'path' );
 var fs = require( 'fs' );
 var hb = require( 'handlebars' );
+var log = require( './lib/log.js' );
 
 
 var cacheDir = path.resolve( __dirname, 'cache' );
@@ -26,17 +27,17 @@ Radiusd.prototype = {
 		// Spawn Freeradius
 		radiusd = spawn( 'freeradius', [
 			'-d', cacheDir,
-			//'-X'
-			'-f'
+			'-X'
+			//'-f'
 		] );
 		radiusd.stderr.pipe( errFile );
 		radiusd.stdout.pipe( errFile );
 		radiusd.on( 'exit', function() {
-			console.log( "RADIUSD: Errors occured and freeradius stopped. Confirm the log file cache/radiusd.log" );
+			log.warn( "Errors occured and RADIUSD stopped" );
 			radiusd = null;
 			errFile.end();
 		} );
-		console.log( "RADIUSD: Spwaned radiusd." );
+		log.debug1( "RADIUSD spawned" );
 	},
 
 	// Stops Freeradius
@@ -46,7 +47,7 @@ Radiusd.prototype = {
 		// Setup exit event
 		radiusd.removeAllListeners( 'exit' );
 		radiusd.on( 'exit', function() {
-			console.log( "RADIUSD: Stopped." );
+			log.debug1( "RADIUSD stopped" );
 			radiusd = null;
 			errFile.end();
 			done();

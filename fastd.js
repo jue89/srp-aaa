@@ -5,6 +5,7 @@ var fs = require( 'fs' );
 var async = require( 'async' );
 var mqtt = require( 'mqtt' );
 var ctrl = require( './lib/ctrl.js' );
+var log = require( './lib/log.js' );
 
 var fastd;
 
@@ -30,11 +31,11 @@ Fastd.prototype = {
 		] );
 		fastd.stderr.pipe( errFile );
 		fastd.on( 'exit', function() {
-			console.log( "FASTD: Errors occured and fastd stopped. Confirm the log file cache/fastd.log" );
+			log.warn( "Errors occured and FASTD stopped" );
 			fastd = null;
 			errFile.end();
 		} );
-		console.log( "FASTD: Spwaned fastd." );
+		log.debug1( "FASTD spwaned" );
 
 		// Give FASTD some time to start
 		setTimeout( function() { self.fetchPeers( config ); }, 500 );
@@ -47,7 +48,7 @@ Fastd.prototype = {
 		// Setup exit event
 		fastd.removeAllListeners( 'exit' );
 		fastd.on( 'exit', function() {
-			console.log( "FASTD: Stopped." );
+			log.debug1( "FASTD stopped" );
 			fastd = null;
 			errFile.end();
 			done();
@@ -63,7 +64,7 @@ Fastd.prototype = {
 		fs.readdirSync( peerPath ).forEach( function( f ) {
 			if( ! f[0] == "." ) fs.unlinkSync( peerPath + '/' + f );
 		} );
-		console.log( "FASTD: Cleaned peer directory." );
+		log.debug1( "Cleaned FASTD peer directory" );
 
 		// Write config file
 		fs.writeFileSync(
@@ -89,7 +90,7 @@ Fastd.prototype = {
 		var mqttc = mqtt.createClient( config.mqtt.port, config.mqtt.host );
 		// When connected subscribe to topic ap.
 		mqttc.on( 'connect', function() {
-			console.log( "FASTD: Listening to peer updates." );
+			log.debug0( "Listing to peer updates" );
 			mqttc.subscribe( 'ap/+' );
 		} );
 		// Arriving messages
@@ -137,14 +138,14 @@ Fastd.prototype = {
 				'key "' + peer.public_key + '";\n',
 				function( err ) {
 					if( err ) console.error( err );
-					console.log( "FASTD: Added peer " + peer.id );
+					log.debug0( "New FASTD peer " + peer.id );
 					done();
 				}
 			)
 		}, function() {
 			// When done inform FASTD about newly added peers
 			fastd.kill( 'SIGHUP' );
-			console.log( "FASTD: Reloaded peer directory." );
+			log.debug1( "Reloaded FASTD peer database" );
 			if( done ) done();
 		} );
 	},
@@ -164,14 +165,14 @@ Fastd.prototype = {
 				peerPath + '/' + peer.id,
 				function( err ) {
 					if( err ) console.error( err );
-					console.log( "FASTD: Removed peer " + peer.id );
+					log.debug0( "Removed FASTD peer " + peer.id );
 					done();
 				}
 			)
 		}, function() {
 			// When done inform FASTD about newly added peers
 			fastd.kill( 'SIGHUP' );
-			console.log( "FASTD: Reloaded peer directory." );
+			log.debug1( "Reloaded FASTD peer database" );
 			if( done ) done();
 		} );
 
@@ -199,7 +200,7 @@ Fastd.prototype = {
 			// When groups are not available --> Something went wrong
 			if( ! keys || ! keys[1] || ! keys[2] ) return done( new Error( "Something went wrong reading generated keys." ) );
 
-			console.log( "FASTD: Generated key pair." );
+			log.debug1( "Generated key pair" );
 
 			done( null, {
 				privateKey: keys[1],

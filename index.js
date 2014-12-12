@@ -1,11 +1,15 @@
 var async = require( 'async' );
 
 var config = require( './lib/config.js' );
+var log = require( './lib/log.js' );
 var bridge = require( './bridge.js' );
 var fastd = require( './fastd.js' );
 var radiusd = require( './radiusd.js' );
 
 config( function( config ) {
+	// Log init
+	log.init( config.mqtt.host, config.mqtt.port, config.fqdn );
+
 	// Start API bridge
 	bridge.start( config );
 

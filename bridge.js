@@ -3,6 +3,7 @@ var async = require( 'async' );
 var Cache = require( 'node-cache' );
 var ctrl = require( './lib/ctrl.js' );
 var helper = require( './lib/helper.js' );
+var log = require( './lib/log.js' );
 
 var srv;
 var userCache;
@@ -47,7 +48,7 @@ Bridge.prototype = {
 			} );
 		} );
 		srv.on( 'listening', function() {
-			console.log( "BRIDGE: Listening to Port 2337" );
+			log.debug0( "BRIDGE service listens to port 2337" );
 		} );
 		srv.listen( 2337, '127.0.0.1' );
 
@@ -56,7 +57,7 @@ Bridge.prototype = {
 	},
 	
 	_user: function( args, c ) {
-		console.log( "BRIDGE: Query user " + args.id );
+		log.debug0( "USER QUERY " + args.id );
 		
 		// TODO: Caching
 
@@ -74,7 +75,7 @@ Bridge.prototype = {
 	},
 
 	_auth: function( args, c ) {
-		console.log( "BRIDGE: User " + args.user_id + " has been successfully authenticated." );
+		log.debug1( "USER AUTHENTICATED " + args.user_id );
 
 		// Close socket
 		c.end();
@@ -95,13 +96,13 @@ Bridge.prototype = {
 					id: uds[0].id,
 					last_ap_id: ap
 				} }, function( err, res ) {
-					if( err ) return console.error( "BRIDGE: Could not update ud!" );
+					if( err ) return log.warn( "UD " + uds[0].id + " of USER " + user + " couldn't be updated" );
 
 					// Save ud to session cache
 					sessionCache.set( session, {
 						ud_id: res.body.uds.id
 					} );
-					console.log( "BRIDGE: UD " + res.body.uds.id + " updated." );
+					log.debug1( "UD UPDATED " + res.body.uds.id );
 				} );
 			} else {
 				// Otherwise --> Create
@@ -110,13 +111,14 @@ Bridge.prototype = {
 					mac: mac,
 					last_ap_id: ap
 				} }, function( err, res ) {
-					if( err ) return console.error( "BRIDGE: Could not create ud!" );
+					
+					if( err ) return log.warn( "UD couldn't be created for USER " + user );
 
 					// Save ud to session cache
 					sessionCache.set( session, {
 						ud_id: res.body.uds.id
 					} );
-					console.log( "BRIDGE: UD " + res.body.uds.id + " created." );
+					log.debug1( "UD CREATED " + res.body.uds.id );
 				} );
 			}
 		} );
@@ -166,7 +168,7 @@ Bridge.prototype = {
 			}
 		], function() {
 			// If ud is resolved -> Skip
-			if( ! ud ) return console.error( "BRIDGE: Could not resolve user device!" );
+			if( ! ud ) return log.warn( "UD couldn't be resolved" );
 				
 			if( args.type == "start" ) {
 				// Create session
@@ -175,8 +177,8 @@ Bridge.prototype = {
 					ap_id: ap,
 					ud_id: ud
 				} }, function( err ) {
-					if( err ) return console.error( "BRIDGE: Could not create session!" );
-					console.log( "BRIDGE: Session " + session + " created." );
+					if( err ) return log.warn( "SESSION couldn't be created" );
+					log.debug1( "SESSION CREATED " + session );
 				} );
 			} else if( args.type == "stop" ) {
 				// Stop session
@@ -186,8 +188,8 @@ Bridge.prototype = {
 					sent_bytes: parseInt( args.sent ),
 					received_bytes: parseInt( args.received )
 				} }, function( err ) {
-					if( err ) console.error( "BRIDGE: Could not end session!" );
-					console.log( "BRIDGE: Session " + session + " stopped." );
+					if( err ) log.warn( "SESSION " + session + " couldn't be closed" );
+					log.debug1( "SESSION STOPPED " + session );
 				} );
 			}
 		} );
@@ -195,7 +197,7 @@ Bridge.prototype = {
 	},
 
 	_nas: function( field, args, c ) {
-		console.log( "BRIDGE: NAS (" + field + ") request from " + args.ip );
+		log.debug0( "NAS REQUEST " + field + " from " + args.ip );
 
 		// Expand IPv6 address and get the identifier
 		var ipv6_id = helper.readIPv6Addr( args.ip ).slice( 4 ).join( ':' );
